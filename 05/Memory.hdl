@@ -27,5 +27,24 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    DMux4Way(in=load, sel=address[13..14], a=ram1, b=ram2, c=scr, d=kbd);
+    Or(a=ram1, b=ram2, out=ram);
+    RAM16K(in=in, load=ram, address=address[0..13], out=r1);
+    Screen(in=in, load=scr, address=address[0..12], out=r2);
+    Keyboard(out=r3);
+    Mux4Way16(a=r1, b=r1, c=r2, d=r3, sel=address[13..14], out=out);
+
+    // NOTE
+    // 00 00000 00000000 -> start of ram
+    // 01 11111 11111111 -> end of ram
+    // notice above that the 2 most significant bits are for the ram
+    // occupying 2 possibilities of the address -- 00 & 01 -> a & b
+
+    // 10 00000 00000000 -> start of scr
+    // 10 11111 11111111 -> end of scr
+    // notice above that 2 most significant bits are for the scr
+    // it only takes 1 posibility of the address bit for the dmux -- 10 -> c
+
+    // 11 00000 00000000 -> only bit for the keyboard
+    // the 2 most significant bits -- 11 -> d
 }
