@@ -8,34 +8,39 @@
 
 // Put your code here.
 
-// Set R2 to zero
-@R2
+// this didn't work with the test
+// it passes manual test but it fails with
+// the automatic test. This is a terrible solution.
+@i
+M=0
+@R0
+D=D-M
+@i
+M=D
+
+@sum
 M=0
 
-// JUMP to end if R0 is zero
-@R0
-D=M
-@END
-D;JEQ
+@temp
+M=0
 
-// Iterate if R0 is not zero,
-// then jump to end if it becomes zero
 (LOOP)
-@R0
-D=M
-M=D-1
-
 @R1
 D=M
+@sum
+M=D+M
 
-@R2
-M=M+D
-
-@R0
+@i
 D=M
-
+M=D+1
+D=M
 @LOOP
 D;JNE
+
+@sum
+D=M
+@R2
+M=D
 
 (END)
 @END
