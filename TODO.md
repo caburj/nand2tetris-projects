@@ -43,5 +43,17 @@
 * [X] ~~*Memory*~~ [2019-03-17]
 * [X] ~~*Computer*~~ [2019-03-17]
 
+## 06
+* [ ] Hack assembler
+
+## 07
+
+## 08
+
+## 09
+
+## 10
+* [ ] Tokenizer
+* [ ] Parser
 
 
