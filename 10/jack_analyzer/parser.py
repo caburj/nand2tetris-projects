@@ -1,5 +1,7 @@
 from tokenizer import tokenize
 
+__all__ = ["parse"]
+
 
 def parse(source_code: str):
     tokens = tokenize(source_code)
@@ -240,7 +242,7 @@ def compile_expression(tokens, result, indent):
     """
     result.append(opening("expression", indent - 1))
     compile_term(tokens, result, indent + 1)
-    while tokens[0][1] in ("+", "-", "*", "/", "&", "|", "<", ">", "="):
+    while tokens[0][1] in ("+", "-", "*", "/", "&amp;", "|", "&lt;", "&gt;", "="):
         result.append(to_xml(tokens.pop(0), indent))
         compile_term(tokens, result, indent + 1)
     result.append(closing("expression", indent - 1))
@@ -254,7 +256,28 @@ def compile_term(tokens, result, indent):
         '(' <expression> ')' | '-' | '~' <term>
     """
     result.append(opening("term", indent - 1))
-    result.append(to_xml(tokens.pop(0), indent))
+    if tokens[0][1] == "(":
+        result.append(to_xml(tokens.pop(0), indent))
+        compile_expression(tokens, result, indent + 1)
+        result.append(to_xml(tokens.pop(0), indent))
+    elif tokens[0][1] in ("-", "~"):
+        result.append(to_xml(tokens.pop(0), indent))
+        compile_term(tokens, result, indent + 1)
+    elif tokens[1][1] == "[":
+        result.append(to_xml(tokens.pop(0), indent))
+        result.append(to_xml(tokens.pop(0), indent))
+        compile_expression(tokens, result, indent + 1)
+        result.append(to_xml(tokens.pop(0), indent))
+    elif tokens[1][1] in ("(", "."):
+        if tokens[1][1] == ".":
+            result.append(to_xml(tokens.pop(0), indent))
+            result.append(to_xml(tokens.pop(0), indent))
+        result.append(to_xml(tokens.pop(0), indent))
+        result.append(to_xml(tokens.pop(0), indent))
+        compile_expression_list(tokens, result, indent + 1)
+        result.append(to_xml(tokens.pop(0), indent))
+    else:
+        result.append(to_xml(tokens.pop(0), indent))
     result.append(closing("term", indent - 1))
 
 
