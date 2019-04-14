@@ -186,8 +186,8 @@ GRAMMAR after absorbing non-essential non-terminals.
 
 <term> =>
   integerConstant | stringConstant | 'true' | 'false' | 'null' | 'this' |
-  <varName> | <varName> '[' <expression> ']' | <subroutineCall> |
-  '(' <expression> ')' | '-' | '~' <term>
+  <varName> | <varName> '[' <expression> ']' | (identifier '.')? identifier '(' <expressionList> ')' |
+  '(' <expression> ')' | ('-'|'~') <term>
 
 <expressionList> =>
   (<expression> (',' <expression>)* )?

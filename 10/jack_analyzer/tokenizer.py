@@ -1,5 +1,6 @@
 import re
 
+__all__ = ["tokenize"]
 # LEXICAL ELEMENTS
 # Implement these functions using regex
 
@@ -41,11 +42,11 @@ def remove_comments(source_code: str) -> str:
 
 def create_token(value):
     if is_keyword(value):
-        return ('keyword', value)
+        return ("keyword", value)
     if is_integer_constant(value):
-        return ('integerConstant', value)
+        return ("integerConstant", value)
     if is_identifier(value):
-        return ('identifier', value)
+        return ("identifier", value)
 
 
 def tokenize(source_code: str) -> str:
@@ -58,7 +59,7 @@ def tokenize(source_code: str) -> str:
     for char in clean_source_code:
         if recording_string:
             if char == '"':
-                result.append(('stringConstant', value))
+                result.append(("stringConstant", value))
                 value = ""
                 recording_string = False
             else:
@@ -74,7 +75,7 @@ def tokenize(source_code: str) -> str:
                     token = create_token(value)
                     result.append(token)
                     value = ""
-                result.append(('symbol', SPECIAL_SYMBOLS.get(char) or char))
+                result.append(("symbol", SPECIAL_SYMBOLS.get(char) or char))
             elif char == '"':  # start recording string constant here
                 if not recording_string:
                     recording_string = True
