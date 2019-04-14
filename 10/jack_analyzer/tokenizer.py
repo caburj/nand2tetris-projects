@@ -41,24 +41,24 @@ def remove_comments(source_code: str) -> str:
 
 def create_token(value):
     if is_keyword(value):
-        return f"<keyword> {value} </keyword>"
+        return ('keyword', value)
     if is_integer_constant(value):
-        return f"<integerConstant> {value} </integerConstant>"
+        return ('integerConstant', value)
     if is_identifier(value):
-        return f"<identifier> {value} </identifier>"
+        return ('identifier', value)
 
 
 def tokenize(source_code: str) -> str:
     """Take string of source code and return string of 
     tokens."""
     clean_source_code = remove_comments(source_code)  # ignore comments
-    result = ["<tokens>"]
+    result = []
     value = ""
     recording_string = False  # flag for recording string constant
     for char in clean_source_code:
         if recording_string:
             if char == '"':
-                result.append(f"<stringConstant> {value} </stringConstant>")
+                result.append(('stringConstant', value))
                 value = ""
                 recording_string = False
             else:
@@ -74,12 +74,11 @@ def tokenize(source_code: str) -> str:
                     token = create_token(value)
                     result.append(token)
                     value = ""
-                result.append(f"<symbol> {SPECIAL_SYMBOLS.get(char) or char } </symbol>")
+                result.append(('symbol', SPECIAL_SYMBOLS.get(char) or char))
             elif char == '"':  # start recording string constant here
                 if not recording_string:
                     recording_string = True
             else:
                 value += char
-    result.append("</tokens>")
-    return "\n".join(result) + "\n"
+    return result
 
