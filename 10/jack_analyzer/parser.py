@@ -123,9 +123,12 @@ def compile_var_dec(tokens, result, indent):
 def compile_statements(tokens, result, indent):
     """
     <statements> =>
-      ( <letStatement> | <ifStatement> | <whileStatement> |
-        <doStatement> | <returnStatement>
-        <statement> )*
+        ( <letStatement> 
+        | <ifStatement> 
+        | <whileStatement> 
+        | <doStatement> 
+        | <returnStatement>
+        )*
     """
     result.append(opening("statements", indent - 1))
     while tokens[0][1] in ("let", "if", "while", "do", "return"):
@@ -164,7 +167,7 @@ def compile_let_statement(tokens, result, indent):
 def compile_if_statement(tokens, result, indent):
     """
     <ifStatement> =>
-        'if' '(' <expression> ')' '{' statements> '}'
+        'if' '(' <expression> ')' '{' <statements> '}'
         ('else' '{' statements> '}')?
     """
     result.append(opening("ifStatement", indent - 1))
@@ -186,7 +189,7 @@ def compile_if_statement(tokens, result, indent):
 def compile_while_statement(tokens, result, indent):
     """
     <whileStatement> =>
-        'while' '(' <expression> ')' '{' statements> '}'
+        'while' '(' <expression> ')' '{' <statements> '}'
         ('else' '{' statements> '}')?
     """
     result.append(opening("whileStatement", indent - 1))
@@ -252,9 +255,18 @@ def compile_expression(tokens, result, indent):
 def compile_term(tokens, result, indent):
     """
     <term> =>
-        integerConstant | stringConstant | 'true' | 'false' | 'null' | 'this' |
-        <varName> | <varName> '[' <expression> ']' | <subroutineCall> |
-        '(' <expression> ')' | '-' | '~' <term>
+        ( integerConstant 
+        | stringConstant 
+        | 'true' 
+        | 'false' 
+        | 'null' 
+        | 'this' 
+        | <varName> 
+        | <varName> '[' <expression> ']' 
+        | (identifier '.')? identifier '(' <expressionList> ')' 
+        | '(' <expression> ')' 
+        | ('-' | '~') <term> 
+        )
     """
     result.append(opening("term", indent - 1))
     if tokens[0][1] == "(":
