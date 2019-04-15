@@ -27,12 +27,12 @@ def compile_class(tokens, result, indent):
         'class' identifier '{' <classVarDec>* <subroutineDec>* '}'
     """
     result.append(opening("class", indent - 1))
-    result.append(to_xml(tokens.pop(0), indent))  # take 'class'
-    result.append(to_xml(tokens.pop(0), indent))  # take identifier
-    result.append(to_xml(tokens.pop(0), indent))  # take '{'
+    result.append(to_xml(tokens.pop(0), indent))  # class definition
+    result.append(to_xml(tokens.pop(0), indent))  # name
+    result.append(to_xml(tokens.pop(0), indent))
     compile_class_var_dec(tokens, result, indent + 1)
     compile_subroutine_dec(tokens, result, indent + 1)
-    result.append(to_xml(tokens.pop(0), indent))  # take '}'
+    result.append(to_xml(tokens.pop(0), indent))
     result.append(closing("class", indent - 1))
     return result
 
@@ -44,13 +44,13 @@ def compile_class_var_dec(tokens, result, indent):
 
     """
     while tokens[0][1] in ("static", "field"):
-        result.append(opening("classVarDec", indent - 1))
-        result.append(to_xml(tokens.pop(0), indent))
-        result.append(to_xml(tokens.pop(0), indent))
-        result.append(to_xml(tokens.pop(0), indent))
+        result.append(opening("classVarDec", indent - 1))  # class var declaration
+        result.append(to_xml(tokens.pop(0), indent))  # kind
+        result.append(to_xml(tokens.pop(0), indent))  # type
+        result.append(to_xml(tokens.pop(0), indent))  # name
         while tokens[0][1] == ",":
-            result.append(to_xml(tokens.pop(0), indent))
-            result.append(to_xml(tokens.pop(0), indent))
+            result.append(to_xml(tokens.pop(0), indent))  # take ','
+            result.append(to_xml(tokens.pop(0), indent))  # name
         result.append(to_xml(tokens.pop(0), indent))
         result.append(closing("classVarDec", indent - 1))
 
@@ -63,10 +63,10 @@ def compile_subroutine_dec(tokens, result, indent):
         <subroutineBody>
     """
     while tokens[0][1] in ("constructor", "function", "method"):
-        result.append(opening("subroutineDec", indent - 1))
+        result.append(opening("subroutineDec", indent - 1))  # subroutine declaration
         result.append(to_xml(tokens.pop(0), indent))
-        result.append(to_xml(tokens.pop(0), indent))
-        result.append(to_xml(tokens.pop(0), indent))
+        result.append(to_xml(tokens.pop(0), indent))  # type
+        result.append(to_xml(tokens.pop(0), indent))  # name
         result.append(to_xml(tokens.pop(0), indent))
         compile_parameter_list(tokens, result, indent + 1)
         result.append(to_xml(tokens.pop(0), indent))
@@ -79,12 +79,12 @@ def compile_parameter_list(tokens, result, indent):
     <parameterList> =>
         (<type> identifier (',' <type> identifier)* )?
     """
-    result.append(opening("parameterList", indent - 1))
+    result.append(opening("parameterList", indent - 1))  # parameter list
     while tokens[0][1] != ")":
-        result.append(to_xml(tokens.pop(0), indent))
-        result.append(to_xml(tokens.pop(0), indent))
+        result.append(to_xml(tokens.pop(0), indent))  # type
+        result.append(to_xml(tokens.pop(0), indent))  # name
         while tokens[0][1] == ",":
-            result.append(to_xml(tokens.pop(0), indent))  # ,
+            result.append(to_xml(tokens.pop(0), indent))  # take ','
             result.append(to_xml(tokens.pop(0), indent))  # type
             result.append(to_xml(tokens.pop(0), indent))  # name
     result.append(closing("parameterList", indent - 1))
@@ -110,13 +110,13 @@ def compile_var_dec(tokens, result, indent):
     """
     while tokens[0][1] == "var":
         result.append(opening("varDec", indent - 1))
-        result.append(to_xml(tokens.pop(0), indent))
-        result.append(to_xml(tokens.pop(0), indent))
-        result.append(to_xml(tokens.pop(0), indent))
+        result.append(to_xml(tokens.pop(0), indent))  # kind = local
+        result.append(to_xml(tokens.pop(0), indent))  # type
+        result.append(to_xml(tokens.pop(0), indent))  # name
         while tokens[0][1] == ",":
-            result.append(to_xml(tokens.pop(0), indent))
-            result.append(to_xml(tokens.pop(0), indent))
-        result.append(to_xml(tokens.pop(0), indent))
+            result.append(to_xml(tokens.pop(0), indent))  # type
+            result.append(to_xml(tokens.pop(0), indent))  # name
+        result.append(to_xml(tokens.pop(0), indent))  # take ';'
         result.append(closing("varDec", indent - 1))
 
 
@@ -152,8 +152,8 @@ def compile_let_statement(tokens, result, indent):
         'let' identifier ('[' <expression> ']')? '=' <expression> ';'
     """
     result.append(opening("letStatement", indent - 1))
-    result.append(to_xml(tokens.pop(0), indent))
-    result.append(to_xml(tokens.pop(0), indent))
+    result.append(to_xml(tokens.pop(0), indent))  # let statement
+    result.append(to_xml(tokens.pop(0), indent))  # name
     if tokens[0][1] == "[":
         result.append(to_xml(tokens.pop(0), indent))
         compile_expression(tokens, result, indent + 1)
