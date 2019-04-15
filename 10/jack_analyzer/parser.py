@@ -84,8 +84,9 @@ def compile_parameter_list(tokens, result, indent):
         result.append(to_xml(tokens.pop(0), indent))
         result.append(to_xml(tokens.pop(0), indent))
         while tokens[0][1] == ",":
-            result.append(to_xml(tokens.pop(0), indent))
-            result.append(to_xml(tokens.pop(0), indent))
+            result.append(to_xml(tokens.pop(0), indent))  # ,
+            result.append(to_xml(tokens.pop(0), indent))  # type
+            result.append(to_xml(tokens.pop(0), indent))  # name
     result.append(closing("parameterList", indent - 1))
 
 
