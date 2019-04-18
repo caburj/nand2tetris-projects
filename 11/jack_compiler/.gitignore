@@ -1,7 +1,4 @@
-00
-demo
 *.pyc
 
 venv/
 .cache/
-.vscode/
