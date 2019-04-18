@@ -12,6 +12,17 @@ class Identifier:
     index: int
 
 
+class LabelFactory:
+    def __init__(self, suffix):
+        self.suffix = suffix
+        self.count = 0
+
+    def new(self):
+        label = f"{self.suffix}{self.count}"
+        self.count += 1
+        return label
+
+
 class JackCompiler:
     current_index_of_kinds = {"field": 0, "static": 0, "local": 0, "argument": 0}
 
@@ -24,6 +35,7 @@ class JackCompiler:
         self.current_subroutine_name = ""
         self.current_subroutine_kind = ""
         self.current_subroutine_type = ""
+        self.label_factory = LabelFactory("L")
 
     def __call__(self):
         return self.compile_class(result=[])
@@ -199,7 +211,7 @@ class JackCompiler:
             result.append(f"add")
             result.append(f"pop pointer 1")
             self.ignore_token("]")
-        self.ignore_token('=')
+        self.ignore_token("=")
         compile_expression(self.tokens, result)
         if is_array:
             result.append(f"pop that 0")
@@ -213,37 +225,46 @@ class JackCompiler:
             'if' '(' <expression> ')' '{' <statements> '}'
             ('else' '{' statements> '}')?
         """
-        result.append(self.tokens.pop(0))
-        result.append(self.tokens.pop(0))
+
+        L1 = self.label_factory.new()
+        L2 = self.label_factory.new()
+        self.ignore_token("if")
+        self.ignore_token("(")
         compile_expression(self.tokens, result)
-        result.append(self.tokens.pop(0))
-        result.append(self.tokens.pop(0))
+        result.append(f"not")
+        result.append(f"if-goto {L1}")
         compile_statements(self.tokens, result)
-        result.append(self.tokens.pop(0))
+        result.append(f"goto {L2}")
+        self.ignore_token(")")
+        self.ignore_token("{")
+        self.ignore_token("}")
         if self.tokens[0][1] == "else":
-            result.append(self.tokens.pop(0))
-            result.append(self.tokens.pop(0))
+            self.ignore_token("else")
+            self.ignore_token("{")
+            result.append(f"label {L1}")
             compile_statements(self.tokens, result)
-            result.append(self.tokens.pop(0))
+            self.ignore_token("}")
+        result.append(f"label {L2}")
 
     def compile_while_statement(self, result):
         """
         <whileStatement> =>
             'while' '(' <expression> ')' '{' <statements> '}'
-            ('else' '{' statements> '}')?
         """
-        result.append(self.tokens.pop(0))
-        result.append(self.tokens.pop(0))
+        L1 = self.label_factory.new()
+        L2 = self.label_factory.new()
+        self.ignore_token("while")
+        self.ignore_token("(")
+        result.append(f"label {L1}")
         compile_expression(self.tokens, result)
-        result.append(self.tokens.pop(0))
-        result.append(self.tokens.pop(0))
+        result.append(f"not")
+        self.ignore_token(")")
+        self.ignore_token("{")
+        result.append(f"if-goto {L2}")
         compile_statements(self.tokens, result)
-        result.append(self.tokens.pop(0))
-        if self.tokens[0][1] == "else":
-            result.append(self.tokens.pop(0))
-            result.append(self.tokens.pop(0))
-            compile_statements(self.tokens, result)
-            result.append(self.tokens.pop(0))
+        result.append(f"goto {L1}")
+        self.ignore_token("}")
+        result.append(f"label {L2}")
 
     def compile_do_statement(self, result):
         """
