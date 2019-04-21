@@ -4,81 +4,31 @@ __all__ = ["tokenize"]
 
 
 KEYWORDS = "class constructor function method field static var int char boolean void true false null this let do if else while return".split()
-SYMBOLS = "{ } ( ) [ ] . , ; + - * / & | < > = ~".split()
+SYMBOLS = r"\{ \} \( \) \[ \] \. \, \; \+ \- \* \/ \& \| \< \> \= \~".split()
 SPECIAL_SYMBOLS = dict([("<", "&lt;"), (">", "&gt;"), ('"', "&quot;"), ("&", "&amp;")])
-
-
-def is_keyword(token):
-    return token in KEYWORDS
-
-
-def is_symbol(token):
-    return token in SYMBOLS
-
-
-def is_integer_constant(token):
-    return bool(re.match(r"^[-+]?([1-9]\d*|0)$", token)) and 0 <= int(token) <= 32767
-
-
-def is_string_constant(token):
-    return bool(re.match(r'^".*"$', token))
-
-
-def is_identifier(token):
-    return bool(re.match(r"^[A-Za-z_]\w*$", token))
-
-
-def remove_comments(source_code: str) -> str:
-    """Returns a string without the comments."""
-    # removes one-line block comments /** */
-    no_line_comment1 = re.sub(r"/\*\*.*\*/", "", source_code)
-    # removes line comments //
-    no_line_comment2 = re.sub(r"//.*\n", "\n", no_line_comment1)
-    # removes block comments /** \n */
-    no_comment_string = re.sub(r"/\*[\s\S]*\*/", "", no_line_comment2)
-    return no_comment_string
-
-
-def create_token(value):
-    if is_keyword(value):
-        return ("keyword", value)
-    if is_integer_constant(value):
-        return ("integerConstant", value)
-    if is_identifier(value):
-        return ("identifier", value)
 
 
 def tokenize(source_code: str) -> list:
     """Take string of source code and return string of 
     tokens."""
-    clean_source_code = remove_comments(source_code)  # ignore comments
-    result = []
-    value = ""
-    recording_string = False  # flag for recording string constant
-    for char in clean_source_code:
-        if recording_string:
-            if char == '"':
-                result.append(("stringConstant", value))
-                value = ""
-                recording_string = False
-            else:
-                value += char
-        elif bool(re.match(r"\s", char)):
-            if value:
-                token = create_token(value)
-                result.append(token)
-                value = ""
-        else:
-            if is_symbol(char):
-                if value:
-                    token = create_token(value)
-                    result.append(token)
-                    value = ""
-                result.append(("symbol", char))
-            elif char == '"':  # start recording string constant here
-                if not recording_string:
-                    recording_string = True
-            else:
-                value += char
-    return result
+    token_specification = [
+        ("comment", "|".join([r"//.*\n", r"/\*\*([\s\S])+?\*/"])),
+        ("symbol", "|".join(SYMBOLS)),
+        ("integerConstant", r"([1-9]\d*|0)"),
+        ("stringConstant", r'".*"'),
+        ("identifier", r"[A-Za-z_]\w*"),
+        ("mismatch", r"."),
+    ]
+    tok_regex = "|".join("(?P<%s>%s)" % pair for pair in token_specification)
+    for mo in re.finditer(tok_regex, source_code):
+        kind = mo.lastgroup
+        value = mo.group()
+        if kind == "identifier":
+            if value in KEYWORDS:
+                kind == "keyword"
+        if kind in ("mismatch", "comment"):
+            continue
+        if kind == "stringConstant":
+            value = value[1:-1]
+        yield (kind, value)
 

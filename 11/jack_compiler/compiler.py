@@ -75,7 +75,7 @@ class JackCompiler:
         return l
 
     def compile(self):
-        tokens = list(reversed(tokenize(self.source_code)))
+        tokens = list(reversed(list(tokenize(self.source_code))))
         return self.compile_class(tokens, result=[])
 
     def compile_class(self, tokens, result):
@@ -264,49 +264,49 @@ class JackCompiler:
             ('else' '{' statements> '}')?
         """
 
-        IF_TRUE = self.next_label("IF_TRUE")
-        IF_FALSE = self.next_label("IF_FALSE")
+        THEN = self.next_label("THEN")
+        ELSE = self.next_label("ELSE")
         tokens.pop()
         tokens.pop()
         self.compile_expression(tokens, result)
-        result.append(f"if-goto {IF_TRUE}")
-        result.append(f"goto {IF_FALSE}")
+        result.append(f"if-goto {THEN}")
+        result.append(f"goto {ELSE}")
         tokens.pop()
         tokens.pop()
-        result.append(f"label {IF_TRUE}")
+        result.append(f"label {THEN}")
         self.compile_statements(tokens, result)
         tokens.pop()
         if tokens[-1][1] == "else":
-            IF_END = self.next_label("IF_END")
-            result.append(f"goto {IF_END}")
-            result.append(f"label {IF_FALSE}")
+            ENDIF = self.next_label("ENDIF")
+            result.append(f"goto {ENDIF}")
+            result.append(f"label {ELSE}")
             tokens.pop()
             tokens.pop()
             self.compile_statements(tokens, result)
             tokens.pop()
-            result.append(f"label {IF_END}")
+            result.append(f"label {ENDIF}")
         else:
-            result.append(f"label {IF_FALSE}")
+            result.append(f"label {ELSE}")
 
     def compile_while_statement(self, tokens, result):
         """
         <whileStatement> =>
             'while' '(' <expression> ')' '{' <statements> '}'
         """
-        L1 = self.next_label("L")
-        L2 = self.next_label("L")
+        WHILE = self.next_label("WHILE")
+        ENDWHILE = self.next_label("ENDWHILE")
         tokens.pop()
         tokens.pop()
-        result.append(f"label {L1}")
+        result.append(f"label {WHILE}")
         self.compile_expression(tokens, result)
         result.append(f"not")
         tokens.pop()
         tokens.pop()
-        result.append(f"if-goto {L2}")
+        result.append(f"if-goto {ENDWHILE}")
         self.compile_statements(tokens, result)
-        result.append(f"goto {L1}")
+        result.append(f"goto {WHILE}")
         tokens.pop()
-        result.append(f"label {L2}")
+        result.append(f"label {ENDWHILE}")
 
     def compile_do_statement(self, tokens, result):
         """

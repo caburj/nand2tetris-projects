@@ -90,12 +90,12 @@ return
 function PongGame.run 1
 push argument 0
 pop pointer 0
-label L0
+label WHILE0
 push this 3
 not
 not
-if-goto L1
-label L2
+if-goto ENDWHILE0
+label WHILE1
 push local 0
 push constant 0
 eq
@@ -103,7 +103,7 @@ push this 3
 not
 and
 not
-if-goto L3
+if-goto ENDWHILE1
 call Keyboard.keyPressed 0
 pop local 0
 push this 0
@@ -115,45 +115,45 @@ pop temp 0
 push constant 50
 call Sys.wait 1
 pop temp 0
-goto L2
-label L3
+goto WHILE1
+label ENDWHILE1
 push local 0
 push constant 130
 eq
-if-goto IF_TRUE0
-goto IF_FALSE0
-label IF_TRUE0
+if-goto THEN0
+goto ELSE0
+label THEN0
 push this 0
 push constant 1
 call Bat.setDirection 2
 pop temp 0
-goto IF_END0
-label IF_FALSE0
+goto ENDIF0
+label ELSE0
 push local 0
 push constant 132
 eq
-if-goto IF_TRUE1
-goto IF_FALSE1
-label IF_TRUE1
+if-goto THEN1
+goto ELSE1
+label THEN1
 push this 0
 push constant 2
 call Bat.setDirection 2
 pop temp 0
-goto IF_END1
-label IF_FALSE1
+goto ENDIF1
+label ELSE1
 push local 0
 push constant 140
 eq
-if-goto IF_TRUE2
-goto IF_FALSE2
-label IF_TRUE2
+if-goto THEN2
+goto ELSE2
+label THEN2
 push constant 0
 not
 pop this 3
-label IF_FALSE2
-label IF_END1
-label IF_END0
-label L4
+label ELSE2
+label ENDIF1
+label ENDIF0
+label WHILE2
 push local 0
 push constant 0
 eq
@@ -162,7 +162,7 @@ push this 3
 not
 and
 not
-if-goto L5
+if-goto ENDWHILE2
 call Keyboard.keyPressed 0
 pop local 0
 push this 0
@@ -174,14 +174,14 @@ pop temp 0
 push constant 50
 call Sys.wait 1
 pop temp 0
-goto L4
-label L5
-goto L0
-label L1
+goto WHILE2
+label ENDWHILE2
+goto WHILE0
+label ENDWHILE0
 push this 3
-if-goto IF_TRUE3
-goto IF_FALSE3
-label IF_TRUE3
+if-goto THEN3
+goto ELSE3
+label THEN3
 push constant 10
 push constant 27
 call Output.moveCursor 2
@@ -208,7 +208,7 @@ push constant 114
 call String.appendChar 2
 call Output.printString 1
 pop temp 0
-label IF_FALSE3
+label ELSE3
 push constant 0
 return
 function PongGame.moveBall 5
@@ -225,9 +225,9 @@ push this 5
 eq
 not
 and
-if-goto IF_TRUE4
-goto IF_FALSE4
-label IF_TRUE4
+if-goto THEN4
+goto ELSE4
+label THEN4
 push this 2
 pop this 5
 push constant 0
@@ -247,9 +247,9 @@ pop local 4
 push this 2
 push constant 4
 eq
-if-goto IF_TRUE5
-goto IF_FALSE5
-label IF_TRUE5
+if-goto THEN5
+goto ELSE5
+label THEN5
 push local 1
 push local 4
 gt
@@ -260,34 +260,34 @@ or
 pop this 3
 push this 3
 not
-if-goto IF_TRUE6
-goto IF_FALSE6
-label IF_TRUE6
+if-goto THEN6
+goto ELSE6
+label THEN6
 push local 4
 push local 1
 push constant 10
 add
 lt
-if-goto IF_TRUE7
-goto IF_FALSE7
-label IF_TRUE7
+if-goto THEN7
+goto ELSE7
+label THEN7
 push constant 1
 neg
 pop local 0
-goto IF_END2
-label IF_FALSE7
+goto ENDIF2
+label ELSE7
 push local 3
 push local 2
 push constant 10
 sub
 gt
-if-goto IF_TRUE8
-goto IF_FALSE8
-label IF_TRUE8
+if-goto THEN8
+goto ELSE8
+label THEN8
 push constant 1
 pop local 0
-label IF_FALSE8
-label IF_END2
+label ELSE8
+label ENDIF2
 push this 6
 push constant 2
 sub
@@ -307,12 +307,12 @@ pop temp 0
 push this 4
 call Output.printInt 1
 pop temp 0
-label IF_FALSE6
-label IF_FALSE5
+label ELSE6
+label ELSE5
 push this 1
 push local 0
 call Ball.bounce 2
 pop temp 0
-label IF_FALSE4
+label ELSE4
 push constant 0
 return
