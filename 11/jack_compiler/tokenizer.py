@@ -1,8 +1,7 @@
 import re
 
 __all__ = ["tokenize"]
-# LEXICAL ELEMENTS
-# Implement these functions using regex
+
 
 KEYWORDS = "class constructor function method field static var int char boolean void true false null this let do if else while return".split()
 SYMBOLS = "{ } ( ) [ ] . , ; + - * / & | < > = ~".split()
@@ -36,7 +35,7 @@ def remove_comments(source_code: str) -> str:
     # removes line comments //
     no_line_comment2 = re.sub(r"//.*\n", "\n", no_line_comment1)
     # removes block comments /** \n */
-    no_comment_string = re.sub(r"/\*\*[\s\S]*\*/", "", no_line_comment2)
+    no_comment_string = re.sub(r"/\*[\s\S]*\*/", "", no_line_comment2)
     return no_comment_string
 
 
@@ -49,7 +48,7 @@ def create_token(value):
         return ("identifier", value)
 
 
-def tokenize(source_code: str) -> str:
+def tokenize(source_code: str) -> list:
     """Take string of source code and return string of 
     tokens."""
     clean_source_code = remove_comments(source_code)  # ignore comments
@@ -75,7 +74,7 @@ def tokenize(source_code: str) -> str:
                     token = create_token(value)
                     result.append(token)
                     value = ""
-                result.append(("symbol", SPECIAL_SYMBOLS.get(char) or char))
+                result.append(("symbol", char))
             elif char == '"':  # start recording string constant here
                 if not recording_string:
                     recording_string = True

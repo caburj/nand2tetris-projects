@@ -12,168 +12,197 @@ class Identifier:
     index: int
 
 
-class LabelFactory:
-    def __init__(self, suffix):
-        self.suffix = suffix
-        self.count = 0
+@dataclass
+class Class:
+    name: str
+    symbols: dict
 
-    def new(self):
-        label = f"{self.suffix}{self.count}"
-        self.count += 1
-        return label
+
+@dataclass
+class Subroutine:
+    name: str
+    type: str
+    kind: str
+    symbols: dict
+
+
+op_map = dict(
+    zip(
+        ("+", "-", "*", "/", "&", "|", "<", ">", "="),
+        (
+            "add",
+            "sub",
+            "call Math.multiply 2",
+            "call Math.divide 2",
+            "and",
+            "or",
+            "lt",
+            "gt",
+            "eq",
+        ),
+    )
+)
+
+
+def call(op):
+    return f"{op_map[op]}"
+
+
+def num_fields(symbols):
+    return len([symbol for symbol in symbols.values() if symbol.kind == "field"])
 
 
 class JackCompiler:
-    current_index_of_kinds = {"field": 0, "static": 0, "local": 0, "argument": 0}
-
     def __init__(self, source_code):
         self.source_code = source_code
-        self.tokens = tokenize(source_code)
-        self.class_name = ""
-        self.class_symbols = {}
-        self.subroutine_symbols = {}
-        self.current_subroutine_name = ""
-        self.current_subroutine_kind = ""
-        self.current_subroutine_type = ""
-        self.label_factory = LabelFactory("L")
+        self.INDECES = {"field": -1, "static": -1, "local": -1, "argument": -1}
+        self.CLASS = Class("", {})
+        self.SUBROUTINE = Subroutine("", "", "", {})
+        self.suffices = {}
 
-    def __call__(self):
-        return self.compile_class(result=[])
+    def next_index(self, kind):
+        self.INDECES.update({kind: self.INDECES[kind] + 1})
+        return self.INDECES.get(kind)
 
-    def ignore_token(self, *args):
-        self.tokens.pop(0)
+    def reset_index(self, kind):
+        self.INDECES.update({kind: -1})
 
-    @staticmethod
-    def get_index(kind):
-        """SIDE-EFFECT: increments the index corresponding to kind."""
-        old_index = JackCompiler.current_index_of_kinds.get(kind)
-        JackCompiler.current_index_of_kinds.update({kind: old_index + 1})
-        return old_index
+    def next_label(self, suffix):
+        if not self.suffices.get(suffix):
+            self.suffices.update({suffix: 0})
+        l = f"{suffix}{self.suffices[suffix]}"
+        self.suffices.update({suffix: self.suffices[suffix] + 1})
+        return l
 
-    @staticmethod
-    def reset_index(kind):
-        JackCompiler.current_index_of_kinds.update({kind: 0})
+    def compile(self):
+        tokens = list(reversed(tokenize(self.source_code)))
+        return self.compile_class(tokens, result=[])
 
-    def compile_class(self, result):
+    def compile_class(self, tokens, result):
         """
         <class> =>
             'class' identifier '{' <classVarDec>* <subroutineDec>* '}'
         """
-        self.ignore_token("class")
-        self.class_name = self.tokens.pop(0)
-        self.ignore_token("{")
-        compile_class_var_dec(self.tokens, result)
-        compile_subroutine_dec(self.tokens, result)
-        self.ignore_token("}")
+        tokens.pop()
+        self.CLASS.name = tokens.pop()[1]
+        tokens.pop()
+        self.compile_class_var_dec(tokens, result)
+        self.compile_subroutine_dec(tokens, result)
+        tokens.pop()
         return result
 
-    def compile_class_var_dec(self, result):
+    def compile_class_var_dec(self, tokens, result):
         """
         <classVarDec> =>
             ('static' | 'field') ('int' | 'char' | 'boolean' | identifier) identifier (',' identifier)* ';'
 
         """
-        while self.tokens[0][1] in ("static", "field"):
-            kind = self.tokens.pop(0)
-            type_ = self.tokens.pop(0)
-            name = self.tokens.pop(0)
-            self.class_symbols.update(
-                {name: Identifier(name, type_, kind, JackCompiler.get_index(kind))}
+        while tokens[-1][1] in ("static", "field"):
+            kind = tokens.pop()[1]
+            type = tokens.pop()[1]
+            name = tokens.pop()[1]
+            self.CLASS.symbols.update(
+                {name: Identifier(name, type, kind, self.next_index(kind))}
             )
-            while self.tokens[0][1] == ",":
-                self.ignore_token(",")
-                name = self.tokens.pop(0)
-                self.class_symbols.update(
-                    {name: Identifier(name, type_, kind, JackCompiler.get_index(kind))}
+            while tokens[-1][1] == ",":
+                tokens.pop()
+                name = tokens.pop()[1]
+                self.CLASS.symbols.update(
+                    {name: Identifier(name, type, kind, self.next_index(kind))}
                 )
-            self.ignore_token(";")
+            tokens.pop()
 
-    def compile_subroutine_dec(self, result):
+    def compile_subroutine_dec(self, tokens, result):
         """
         <subroutineDec> =>
             ('constructor' | 'function' | 'method')
             ('void' | 'int' | 'char' | 'boolean' | identifier) identifier '(' <parameterList> ')'
             <subroutineBody>
         """
-        while self.tokens[0][1] in ("constructor", "function", "method"):
-            self.current_subroutine_kind = self.tokens.pop(0)
-            self.current_subroutine_type = self.tokens.pop(0)
-            self.current_subroutine_name = self.tokens.pop(0)
-            self.subroutine_symbols = {}  # start new subroutine symbol table
-            self.ignore_token("(")
-            compile_parameter_list(self.tokens, result)
-            self.ignore_token(")")
-            compile_subroutine_body(self.tokens, result)
+        while tokens[-1][1] in ("constructor", "function", "method"):
+            self.SUBROUTINE.kind = tokens.pop()[1]
+            self.SUBROUTINE.type = tokens.pop()[1]
+            self.SUBROUTINE.name = tokens.pop()[1]
+            self.SUBROUTINE.symbols = {}
+            tokens.pop()
+            self.compile_parameter_list(tokens, result)
+            tokens.pop()
+            self.compile_subroutine_body(tokens, result)
+            self.SUBROUTINE = Subroutine("", "", "", {})
 
-    def compile_parameter_list(self, result):
+    def compile_parameter_list(self, tokens, result):
         """
         <parameterList> =>
             (<type> identifier (',' <type> identifier)* )?
         """
-        while self.tokens[0][1] != ")":
-            type_ = self.tokens.pop(0)  # type
-            name = self.tokens.pop(0)  # name
-            self.subroutine_symbols.update(
-                {
-                    name: Identifier(
-                        name, type_, "argument", JackCompiler.get_index("argument")
-                    )
-                }
+        if self.SUBROUTINE.kind == "method":
+            self.next_index("argument")  # start argument at 1 instead of 0
+        while tokens[-1][1] != ")":
+            type = tokens.pop()[1]
+            name = tokens.pop()[1]
+            self.SUBROUTINE.symbols.update(
+                {name: Identifier(name, type, "argument", self.next_index("argument"))}
             )
-            while self.tokens[0][1] == ",":
-                self.ignore_token(",")
-                type_ = self.tokens.pop(0)  # type
-                name = self.tokens.pop(0)  # name
-                self.subroutine_symbols.update(
+            while tokens[-1][1] == ",":
+                tokens.pop()
+                type = tokens.pop()[1]
+                name = tokens.pop()[1]
+                self.SUBROUTINE.symbols.update(
                     {
                         name: Identifier(
-                            name, type_, "argument", JackCompiler.get_index("argument")
+                            name, type, "argument", self.next_index("argument")
                         )
                     }
                 )
 
-    def compile_subroutine_body(self, result):
+    def compile_subroutine_body(self, tokens, result):
         """
         <subroutineBody> =>
             '{' <varDec>* <statements> '}'
         """
-        self.ignore_token("{")
-        compile_var_dec(self.tokens, result)
-        compile_statements(self.tokens, result)
-        self.ignore_token("}")
+        tokens.pop()
+        var_count = self.compile_var_dec(tokens, result)
+        result.append(f"function {self.CLASS.name}.{self.SUBROUTINE.name} {var_count}")
+        if self.SUBROUTINE.kind == "constructor":
+            result.append(f"push constant {num_fields(self.CLASS.symbols)}")
+            result.append(f"call Memory.alloc 1")
+            result.append(f"pop pointer 0")
+        elif self.SUBROUTINE.kind == "method":
+            result.append(f"push argument 0")
+            result.append(f"pop pointer 0")
+        self.compile_statements(tokens, result)
+        tokens.pop()
 
-    def compile_var_dec(self, result):
+    def compile_var_dec(self, tokens, result):
         """
+        Spec:
         <varDec> =>
             'var' ('int' | 'char' | 'boolean' | identifier) identifier (',' identifier)* ';'
+        
+        return: number of local variables
         """
-        while self.tokens[0][1] == "var":
-            self.ignore_token("var")
-            type_ = self.tokens.pop(0)
-            name = self.tokens.pop(0)
-            self.subroutine_symbols.update(
-                {
-                    name: Identifier(
-                        name, type_, "local", JackCompiler.get_index("local")
-                    )
-                }
+        count = 0
+        while tokens[-1][1] == "var":
+            tokens.pop()
+            type = tokens.pop()[1]
+            name = tokens.pop()[1]
+            self.SUBROUTINE.symbols.update(
+                {name: Identifier(name, type, "local", self.next_index("local"))}
             )
-            while self.tokens[0][1] == ",":
-                self.ignore_token(",")
-                type_ = self.tokens.pop(0)  # type
-                name = self.tokens.pop(0)  # name
-                self.subroutine_symbols.update(
-                    {
-                        name: Identifier(
-                            name, type_, "local", JackCompiler.get_index("local")
-                        )
-                    }
+            count += 1
+            while tokens[-1][1] == ",":
+                tokens.pop()
+                name = tokens.pop()[1]
+                self.SUBROUTINE.symbols.update(
+                    {name: Identifier(name, type, "local", self.next_index("local"))}
                 )
-            self.ignore_token(";")
-        JackCompiler.reset_index("local")
-        JackCompiler.reset_index("argument")
+                count += 1
+            tokens.pop()
+        self.reset_index("local")
+        self.reset_index("argument")
+        return count
 
-    def compile_statements(self, result):
+    def compile_statements(self, tokens, result):
         """
         <statements> =>
             ( <letStatement> 
@@ -183,135 +212,160 @@ class JackCompiler:
             | <returnStatement>
             )*
         """
-        while self.tokens[0][1] in ("let", "if", "while", "do", "return"):
-            kind, value = self.tokens[0]
+        while tokens[-1][1] in ("let", "if", "while", "do", "return"):
+            _, value = tokens[-1]
             if value == "let":
-                compile_let_statement(self.tokens, result)
+                self.compile_let_statement(tokens, result)
             elif value == "if":
-                compile_if_statement(self.tokens, result)
+                self.compile_if_statement(tokens, result)
             elif value == "while":
-                compile_while_statement(self.tokens, result)
+                self.compile_while_statement(tokens, result)
             elif value == "do":
-                compile_do_statement(self.tokens, result)
+                self.compile_do_statement(tokens, result)
             elif value == "return":
-                compile_return_statement(self.tokens, result)
+                self.compile_return_statement(tokens, result)
 
-    def compile_let_statement(self, result):
+    def compile_let_statement(self, tokens, result):
         """
         <letStatement> =>
             'let' identifier ('[' <expression> ']')? '=' <expression> ';'
         """
-        self.ignore_token("let")
-        identifier = self.subroutine_symbols.get(self.tokens.pop(0))
-        if self.tokens[0][1] == "[":
+        tokens.pop()
+        name = tokens.pop()[1]
+        identifier = self.SUBROUTINE.symbols.get(name) or self.CLASS.symbols.get(name)
+        is_array = False
+        if tokens[-1][1] == "[":
             is_array = True
-            self.ignore_token("[")
-            result.append(f"push {identifier.kind} {identifier.index}")
-            compile_expression(self.tokens, result)
+            tokens.pop()
+            self.compile_expression(tokens, result)
+            result.append(
+                f"push {'this' if identifier.kind == 'field' else identifier.kind} {identifier.index}"
+            )
             result.append(f"add")
-            result.append(f"pop pointer 1")
-            self.ignore_token("]")
-        self.ignore_token("=")
-        compile_expression(self.tokens, result)
+            # result.append(f"pop pointer 1")
+            tokens.pop()
+        tokens.pop()
+        self.compile_expression(tokens, result)
         if is_array:
+            result.append("pop temp 0")
+            result.append("pop pointer 1")
+            result.append("push temp 0")
             result.append(f"pop that 0")
         else:
-            result.append(f"pop {identifier.kind} {identifier.index}")
-        self.ignore_token(";")
+            result.append(
+                f"pop {'this' if identifier.kind == 'field' else identifier.kind} {identifier.index}"
+            )
+        tokens.pop()
 
-    def compile_if_statement(self, result):
+    def compile_if_statement(self, tokens, result):
         """
         <ifStatement> =>
             'if' '(' <expression> ')' '{' <statements> '}'
             ('else' '{' statements> '}')?
         """
 
-        L1 = self.label_factory.new()
-        L2 = self.label_factory.new()
-        self.ignore_token("if")
-        self.ignore_token("(")
-        compile_expression(self.tokens, result)
-        result.append(f"not")
-        result.append(f"if-goto {L1}")
-        compile_statements(self.tokens, result)
-        result.append(f"goto {L2}")
-        self.ignore_token(")")
-        self.ignore_token("{")
-        self.ignore_token("}")
-        if self.tokens[0][1] == "else":
-            self.ignore_token("else")
-            self.ignore_token("{")
-            result.append(f"label {L1}")
-            compile_statements(self.tokens, result)
-            self.ignore_token("}")
-        result.append(f"label {L2}")
+        IF_TRUE = self.next_label("IF_TRUE")
+        IF_FALSE = self.next_label("IF_FALSE")
+        tokens.pop()
+        tokens.pop()
+        self.compile_expression(tokens, result)
+        result.append(f"if-goto {IF_TRUE}")
+        result.append(f"goto {IF_FALSE}")
+        tokens.pop()
+        tokens.pop()
+        result.append(f"label {IF_TRUE}")
+        self.compile_statements(tokens, result)
+        tokens.pop()
+        if tokens[-1][1] == "else":
+            IF_END = self.next_label("IF_END")
+            result.append(f"goto {IF_END}")
+            result.append(f"label {IF_FALSE}")
+            tokens.pop()
+            tokens.pop()
+            self.compile_statements(tokens, result)
+            tokens.pop()
+            result.append(f"label {IF_END}")
+        else:
+            result.append(f"label {IF_FALSE}")
 
-    def compile_while_statement(self, result):
+    def compile_while_statement(self, tokens, result):
         """
         <whileStatement> =>
             'while' '(' <expression> ')' '{' <statements> '}'
         """
-        L1 = self.label_factory.new()
-        L2 = self.label_factory.new()
-        self.ignore_token("while")
-        self.ignore_token("(")
+        L1 = self.next_label("L")
+        L2 = self.next_label("L")
+        tokens.pop()
+        tokens.pop()
         result.append(f"label {L1}")
-        compile_expression(self.tokens, result)
+        self.compile_expression(tokens, result)
         result.append(f"not")
-        self.ignore_token(")")
-        self.ignore_token("{")
+        tokens.pop()
+        tokens.pop()
         result.append(f"if-goto {L2}")
-        compile_statements(self.tokens, result)
+        self.compile_statements(tokens, result)
         result.append(f"goto {L1}")
-        self.ignore_token("}")
+        tokens.pop()
         result.append(f"label {L2}")
 
-    def compile_do_statement(self, result):
+    def compile_do_statement(self, tokens, result):
         """
         <doStatement> =>
             'do' (identifier '.')? identifier '(' <expressionList> ')' ';'
         """
-        result.append(self.tokens.pop(0))
-        if self.tokens[1][1] == ".":
-            result.append(self.tokens.pop(0))
-            result.append(self.tokens.pop(0))
-        result.append(self.tokens.pop(0))
-        result.append(self.tokens.pop(0))
-        compile_expression_list(self.tokens, result)
-        result.append(self.tokens.pop(0))
-        result.append(self.tokens.pop(0))
+        tokens.pop()
+        prefix = None
+        if tokens[-2][1] == ".":
+            prefix = tokens.pop()[1]
+            tokens.pop()
+        function_name = tokens.pop()[1]
+        tokens.pop()
+        if prefix:
+            identifier = self.SUBROUTINE.symbols.get(prefix) or self.CLASS.symbols.get(
+                prefix
+            )
+            if identifier:
+                result.append(
+                    f"push {'this' if identifier.kind == 'field' else identifier.kind} {identifier.index}"
+                )
+                arg_count = self.compile_expression_list(tokens, result)
+                result.append(f"call {identifier.type}.{function_name} {arg_count + 1}")
+            else:
+                arg_count = self.compile_expression_list(tokens, result)
+                result.append(f"call {prefix}.{function_name} {arg_count}")
+        else:
+            result.append(f"push pointer 0")
+            arg_count = self.compile_expression_list(tokens, result)
+            result.append(f"call {self.CLASS.name}.{function_name} {arg_count + 1}")
+        result.append(f"pop temp 0")
+        tokens.pop()
+        tokens.pop()
 
-    def compile_return_statement(self, result):
+    def compile_return_statement(self, tokens, result):
         """
         <returnStatement> =>
             'return' <expression>? ';'
         """
-        result.append(self.tokens.pop(0))
-        if self.tokens[0][1] != ";":
-            compile_expression(self.tokens, result)
-        result.append(self.tokens.pop(0))
+        tokens.pop()
+        if tokens[-1][1] == ";":
+            result.append(f"push constant 0")
+        else:
+            self.compile_expression(tokens, result)
+        result.append(f"return")
+        tokens.pop()
 
-    def compile_expression(self, result):
+    def compile_expression(self, tokens, result):
         """
         <expression> =>
             <term> (('+' | '-' | '*' | '/' | '&' | '|' | '<' | '>' | '=') <term>)*
         """
-        compile_term(self.tokens, result)
-        while self.tokens[0][1] in (
-            "+",
-            "-",
-            "*",
-            "/",
-            "&amp;",
-            "|",
-            "&lt;",
-            "&gt;",
-            "=",
-        ):
-            result.append(self.tokens.pop(0))
-            compile_term(self.tokens, result)
+        self.compile_term(tokens, result)
+        while tokens[-1][1] in ("+", "-", "*", "/", "&", "|", "<", ">", "="):
+            op = tokens.pop()[1]
+            self.compile_term(tokens, result)
+            result.append(call(op))
 
-    def compile_term(self, result):
+    def compile_term(self, tokens, result):
         """
         <term> =>
             ( integerConstant 
@@ -327,36 +381,95 @@ class JackCompiler:
             | ('-' | '~') <term> 
             )
         """
-        if self.tokens[0][1] == "(":
-            result.append(self.tokens.pop(0))
-            compile_expression(self.tokens, result)
-            result.append(self.tokens.pop(0))
-        elif self.tokens[0][1] in ("-", "~"):
-            result.append(self.tokens.pop(0))
-            compile_term(self.tokens, result)
-        elif self.tokens[1][1] == "[":
-            result.append(self.tokens.pop(0))
-            result.append(self.tokens.pop(0))
-            compile_expression(self.tokens, result)
-            result.append(self.tokens.pop(0))
-        elif self.tokens[1][1] in ("(", "."):
-            if self.tokens[1][1] == ".":
-                result.append(self.tokens.pop(0))
-                result.append(self.tokens.pop(0))
-            result.append(self.tokens.pop(0))
-            result.append(self.tokens.pop(0))
-            compile_expression_list(self.tokens, result)
-            result.append(self.tokens.pop(0))
+        if tokens[-1][1] == "(":
+            tokens.pop()
+            self.compile_expression(tokens, result)
+            tokens.pop()
+        elif tokens[-1][1] in ("-", "~"):
+            unary_op = tokens.pop()[1]
+            self.compile_term(tokens, result)
+            result.append(f"{'neg' if unary_op == '-' else 'not'}")
+        elif tokens[-2][1] == "[":
+            name = tokens.pop()[1]
+            tokens.pop()
+            self.compile_expression(tokens, result)
+            tokens.pop()
+            identifier = self.SUBROUTINE.symbols.get(name) or self.CLASS.symbols.get(
+                name
+            )
+            result.append(
+                f"push {'this' if identifier.kind == 'field' else identifier.kind} {identifier.index}"
+            )
+            result.append(f"add")
+            result.append(f"pop pointer 1")
+            result.append(f"push that 0")
+        elif tokens[-2][1] in ("(", "."):
+            prefix = None
+            if tokens[-2][1] == ".":
+                prefix = tokens.pop()[1]
+                tokens.pop()
+            function_name = tokens.pop()[1]
+            tokens.pop()
+            if prefix:
+                identifier = self.SUBROUTINE.symbols.get(
+                    prefix
+                ) or self.CLASS.symbols.get(prefix)
+                if identifier:
+                    result.append(
+                        f"push {'this' if identifier.kind == 'field' else identifier.kind} {identifier.index}"
+                    )
+                    arg_count = self.compile_expression_list(tokens, result)
+                    result.append(
+                        f"call {identifier.type}.{function_name} {arg_count + 1}"
+                    )
+                else:
+                    arg_count = self.compile_expression_list(tokens, result)
+                    result.append(f"call {prefix}.{function_name} {arg_count}")
+            else:
+                result.append(f"push pointer 0")
+                arg_count = self.compile_expression_list(tokens, result)
+                result.append(f"call {self.CLASS.name}.{function_name} {arg_count + 1}")
+                self.compile_expression_list(tokens, result)
+            tokens.pop()
         else:
-            result.append(self.tokens.pop(0))
+            type_, terminal = tokens.pop()
+            if terminal in self.SUBROUTINE.symbols:
+                identifier = self.SUBROUTINE.symbols.get(terminal)
+                result.append(
+                    f"push {'this' if identifier.kind == 'field' else identifier.kind} {identifier.index}"
+                )
+            elif terminal in self.CLASS.symbols:
+                identifier = self.CLASS.symbols.get(terminal)
+                result.append(
+                    f"push {'this' if identifier.kind == 'field' else identifier.kind} {identifier.index}"
+                )
+            elif terminal in ("false", "null"):
+                result.append(f"push constant 0")
+            elif terminal == "true":
+                result.append(f"push constant 0")
+                result.append(f"not")
+            elif terminal == "this":
+                result.append(f"push pointer 0")
+            elif type_ == "integerConstant":
+                result.append(f"push constant {terminal}")
+            else:
+                result.append(f"push constant {len(terminal)}")
+                result.append(f"call String.new 1")
+                for c in terminal:
+                    result.append(f"push constant {ord(c)}")
+                    result.append(f"call String.appendChar 2")
 
-    def compile_expression_list(self, result):
+    def compile_expression_list(self, tokens, result):
         """
         <expressionList> =>
             (<expression> (',' <expression>)* )?
         """
-        if self.tokens[0][1] != ")":
-            compile_expression(self.tokens, result)
-            while self.tokens[0][1] == ",":
-                result.append(self.tokens.pop(0))
-                compile_expression(self.tokens, result)
+        count = 0
+        if tokens[-1][1] != ")":
+            self.compile_expression(tokens, result)
+            count += 1
+            while tokens[-1][1] == ",":
+                tokens.pop()
+                self.compile_expression(tokens, result)
+                count += 1
+        return count
